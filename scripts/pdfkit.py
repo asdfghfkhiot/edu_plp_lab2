@@ -296,6 +296,11 @@ def data_table(rows, widths, header=True, fs=8.5, align=None, zebra=True):
 
 
 class NumberedCanvas(canvas_module.Canvas):
+    #: teksty nagłówka (lewy, prawy) i stopki (lewy) - nadpisywane przez dokumenty
+    header_left = 'Ćwiczenie T2 \u00b7 Pomiary napięć i prądów stałych'
+    header_right = 'Odpowiedzi na pytania kontrolne'
+    footer_left = 'Laboratorium Podstaw Pomiarów \u00b7 ISE WEiTI PW'
+
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self._saved = []
@@ -319,9 +324,8 @@ class NumberedCanvas(canvas_module.Canvas):
         # nagłówek
         c.setFont('Sans', 7.6)
         c.setFillColor(GREY)
-        c.drawString(LM, PAGE_H - 1.36 * cm, 'Ćwiczenie T2 \u00b7 Pomiary napięć i prądów stałych')
-        c.drawRightString(PAGE_W - RM, PAGE_H - 1.36 * cm,
-                          'Odpowiedzi na pytania kontrolne')
+        c.drawString(LM, PAGE_H - 1.36 * cm, self.header_left)
+        c.drawRightString(PAGE_W - RM, PAGE_H - 1.36 * cm, self.header_right)
         c.setStrokeColor(RULE)
         c.setLineWidth(0.6)
         c.line(LM, PAGE_H - 1.52 * cm, PAGE_W - RM, PAGE_H - 1.52 * cm)
@@ -329,7 +333,7 @@ class NumberedCanvas(canvas_module.Canvas):
         c.line(LM, 1.42 * cm, PAGE_W - RM, 1.42 * cm)
         c.setFont('Sans', 7.5)
         c.setFillColor(GREY)
-        c.drawString(LM, 1.05 * cm, 'Laboratorium Podstaw Pomiarów \u00b7 ISE WEiTI PW')
+        c.drawString(LM, 1.05 * cm, self.footer_left)
         c.drawRightString(PAGE_W - RM, 1.05 * cm,
                           f'str. {self._pageNumber} z {total}')
         c.restoreState()
@@ -337,18 +341,22 @@ class NumberedCanvas(canvas_module.Canvas):
 
 class Doc(BaseDocTemplate):
     cover_draw = None
+    margins = dict(lm=LM, rm=RM, tm=TM, bm=BM)
 
     def __init__(self, filename, **kw):
+        m = self.margins
         super().__init__(filename, pagesize=A4,
-                         leftMargin=LM, rightMargin=RM,
-                         topMargin=TM, bottomMargin=BM,
+                         leftMargin=m['lm'], rightMargin=m['rm'],
+                         topMargin=m['tm'], bottomMargin=m['bm'],
                          title='Ćwiczenie T2 – odpowiedzi na pytania kontrolne',
                          author='Laboratorium Podstaw Pomiarów',
                          subject='Pomiary napięć i prądów stałych',
                          **kw)
-        frame_cover = Frame(LM, BM, CONTENT_W, PAGE_H - TM - BM, id='cover',
+        cw = PAGE_W - m['lm'] - m['rm']
+        ch = PAGE_H - m['tm'] - m['bm']
+        frame_cover = Frame(m['lm'], m['bm'], cw, ch, id='cover',
                             leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-        frame_body = Frame(LM, BM, CONTENT_W, PAGE_H - TM - BM, id='body',
+        frame_body = Frame(m['lm'], m['bm'], cw, ch, id='body',
                            leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
         self.addPageTemplates([
             PageTemplate(id='cover', frames=[frame_cover], onPage=self._cover_bg),
@@ -378,3 +386,32 @@ def build(story, out_path):
     doc = Doc(out_path)
     doc.build(story, canvasmaker=NumberedCanvas)
     return out_path
+
+
+def build_with(story, out_path, canvas_cls=None, doc_cls=None, **doc_kw):
+    """Ogólne składanie dokumentu (używane przez wersję skróconą)."""
+    ccls = canvas_cls or NumberedCanvas
+    dcls = doc_cls or Doc
+    d = dcls(out_path, **doc_kw)
+    d.build(story, canvasmaker=ccls)
+    return out_path
+
+
+class MathImg(Flowable):
+    """Formuła w naturalnym rozmiarze, wyrównana do lewej (do użycia w tabelach)."""
+
+    def __init__(self, tex, size=9.0, pad=0.0):
+        super().__init__()
+        self.path, self.width, self.height = mathpng(tex, size)
+        self.pad = pad
+
+    def wrap(self, aw, ah):
+        if self.width > aw:
+            k = aw / self.width
+            self.width *= k
+            self.height *= k
+        return self.width, self.height
+
+    def draw(self):
+        self.canv.drawImage(self.path, 0, 0, width=self.width,
+                            height=self.height, mask=None)
