@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ćwiczenie T2 — kalkulator niepewności</title>
+<style>
+  :root{
+    --navy:#12335c; --navy2:#1b4470; --accent:#1a5fb4; --ink:#14181d;
+    --grey:#5c6773; --rule:#c3cedc; --light:#eef3f9; --light2:#f7f9fc;
+    --warn:#c9761b; --ok:#186b3a; --bad:#a3231f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"DejaVu Sans","Segoe UI",system-ui,sans-serif;
+    color:var(--ink); background:#e9eef5; font-size:14px; line-height:1.5;
+  }
+  header{
+    background:var(--navy); color:#fff; padding:18px 22px 16px;
+    border-bottom:4px solid var(--accent);
+  }
+  header h1{margin:0; font-size:21px; letter-spacing:.2px}
+  header p{margin:5px 0 0; font-size:12.5px; color:#b9d0ea}
+  .wrap{max-width:1080px; margin:0 auto; padding:18px 16px 60px}
+  nav{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px}
+  nav button{
+    font:inherit; font-size:13px; font-weight:700; cursor:pointer;
+    border:1px solid var(--rule); background:#fff; color:var(--navy);
+    padding:8px 13px; border-radius:7px; transition:.12s;
+  }
+  nav button:hover{background:var(--light); border-color:var(--accent)}
+  nav button.active{background:var(--navy); color:#fff; border-color:var(--navy)}
+  section{display:none; background:#fff; border:1px solid var(--rule);
+    border-radius:10px; padding:20px 22px; box-shadow:0 1px 3px rgba(18,51,92,.06)}
+  section.active{display:block}
+  h2{margin:0 0 4px; font-size:16.5px; color:var(--navy)}
+  .sub{margin:0 0 16px; font-size:12.5px; color:var(--grey)}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+  label{display:block; font-size:12px; font-weight:700; color:var(--navy); margin-bottom:4px}
+  input,select{
+    width:100%; font:inherit; font-size:13.5px; padding:7px 9px;
+    border:1px solid var(--rule); border-radius:6px; background:#fff; color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid rgba(26,95,180,.35); border-color:var(--accent)}
+  .hint{font-size:11px; color:var(--grey); margin-top:3px}
+  h3{margin:22px 0 8px; font-size:13px; color:var(--navy);
+     text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--rule);
+     padding-bottom:5px}
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px}
+  th,td{padding:7px 9px; text-align:left; border-bottom:1px solid #dde5ef}
+  th{background:var(--navy); color:#fff; font-size:11.5px; font-weight:700}
+  tbody tr:nth-child(even){background:var(--light2)}
+  td.num{text-align:right; font-variant-numeric:tabular-nums; font-weight:700}
+  .res{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:14px}
+  .card{background:var(--light); border-left:4px solid var(--accent);
+        border-radius:6px; padding:11px 13px}
+  .card .k{font-size:10.8px; text-transform:uppercase; letter-spacing:.5px; color:var(--grey)}
+  .card .v{font-size:18px; font-weight:700; color:var(--navy);
+           font-variant-numeric:tabular-nums; margin-top:1px}
+  .card .u{font-size:11.5px; color:var(--grey)}
+  .card.warn{border-left-color:var(--warn); background:#fdf6ea}
+  .card.bad{border-left-color:var(--bad); background:#fdf0ef}
+  .card.ok{border-left-color:var(--ok); background:#eef7f1}
+  .formula{background:var(--light2); border:1px solid var(--rule); border-radius:6px;
+           padding:9px 12px; font-family:"DejaVu Serif",Georgia,serif; font-size:13.5px;
+           margin-top:10px; overflow-x:auto}
+  .note{background:#fdf6ea; border-left:4px solid var(--warn);
+        padding:10px 13px; border-radius:6px; font-size:12.8px; margin-top:14px}
+  .ok-note{background:#eef7f1; border-left:4px solid var(--ok);
+        padding:10px 13px; border-radius:6px; font-size:12.8px; margin-top:14px}
+  footer{max-width:1080px; margin:0 auto; padding:0 16px 30px;
+         font-size:11.5px; color:var(--grey); text-align:center}
+  .badge{display:inline-block; background:var(--ok); color:#fff; font-size:10.5px;
+         font-weight:700; padding:2px 7px; border-radius:9px; vertical-align:middle}
+  .badge.no{background:#8c97a3}
+  code{background:#eef1f6; padding:1px 5px; border-radius:4px; font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ćwiczenie T2 — kalkulator niepewności i błędów</h1>
+  <p>Pomiary napięć i prądów stałych · wzory i konwencja niepewności z instrukcji v. 2.4 (rozdz. 4)</p>
+</header>
+
+<div class="wrap">
+<nav>
+  <button data-tab="t1" class="active">1 · Niepewność przyrządu</button>
+  <button data-tab="t2">2 · Błąd metody / SEM</button>
+  <button data-tab="t3">3 · Dwa woltomierze</button>
+  <button data-tab="t4">4 · Kompensacja</button>
+  <button data-tab="t5">5 · Dobór zakresu LM-3</button>
+</nav>
+
+<!-- ============================================ 1 -->
+<section id="t1" class="active">
+  <h2>Niepewność pomiaru — klasa przyrządu i multimetr cyfrowy</h2>
+  <p class="sub">Δ<sub>kl</sub>U = k<sub>l</sub>·U<sub>z</sub>/100 &nbsp;·&nbsp; u = Δ<sub>g</sub>/√3 (przyrząd) lub Δ<sub>g</sub>/3 (element wzorcowy)</p>
+
+  <div class="grid">
+    <div>
+      <label for="p_typ">Typ przyrządu</label>
+      <select id="p_typ">
+        <option value="kl">Woltomierz elektromechaniczny (klasa)</option>
+        <option value="cyf">Multimetr cyfrowy (a % + b %·Uz/U)</option>
+        <option value="wzo">Element wzorcowy (tolerancja, rozkład normalny)</option>
+      </select>
+      <div class="hint">LM-3 → klasa; 34450A / U1252B → cyfrowy; opornik dekadowy → wzorcowy</div>
+    </div>
+    <div id="g_kl">
+      <label for="p_k">Klasa k<sub>l</sub> [%]</label>
+      <input id="p_k" type="number" value="0.5" step="0.1" min="0.05">
+    </div>
+    <div id="g_a" style="display:none">
+      <label for="p_a">Składnik stały a [%]</label>
+      <input id="p_a" type="number" value="0.05" step="0.001" min="0">
+    </div>
+    <div id="g_b" style="display:none">
+      <label for="p_b">Składnik zakresowy b [%]</label>
+      <input id="p_b" type="number" value="0.01" step="0.001" min="0">
+    </div>
+    <div>
+      <label for="p_uz">Zakres U<sub>z</sub> [V]</label>
+      <input id="p_uz" type="number" value="15" step="any" min="0">
+    </div>
+    <div>
+      <label for="p_u">Wskazanie U [V]</label>
+      <input id="p_u" type="number" value="12" step="any" min="0">
+    </div>
+  </div>
+
+  <h3>Wynik</h3>
+  <div class="res">
+    <div class="card"><div class="k">Błąd graniczny δ<sub>g</sub></div>
+      <div class="v" id="r_dg">—</div><div class="u">%</div></div>
+    <div class="card"><div class="k">Δ<sub>g</sub> (bezwzględny)</div>
+      <div class="v" id="r_dabs">—</div><div class="u">V</div></div>
+    <div class="card"><div class="k">Niepewność u(U)</div>
+      <div class="v" id="r_u">—</div><div class="u" id="r_u_unit">V</div></div>
+    <div class="card"><div class="k">Niepewność względna</div>
+      <div class="v" id="r_urel">—</div><div class="u">%</div></div>
+    <div class="card"><div class="k">Zapis wyniku (k = 1)</div>
+      <div class="v" id="r_zapis" style="font-size:14px">—</div><div class="u">V</div></div>
+  </div>
+  <div id="p_note1"></div>
+
+  <h3>Ta sama niepewność na różnych wskazaniach</h3>
+  <table>
+    <thead><tr><th>Wskazanie</th><th>% zakresu</th><th>δ<sub>g</sub> [%]</th>
+      <th>u(U)</th><th>u<sub>rel</sub> [%]</th></tr></thead>
+    <tbody id="p_tab"></tbody>
+  </table>
+  <div class="formula" id="p_formula"></div>
+</section>
+
+<!-- ============================================ 2 -->
+<section id="t2">
+  <h2>Błąd metody przy pomiarze napięcia na zaciskach źródła</h2>
+  <p class="sub">U<sub>V</sub> = E·R<sub>V</sub>/(R<sub>w</sub>+R<sub>V</sub>) &nbsp;·&nbsp;
+     Δ<sub>m</sub>E = −U<sub>V</sub>·R<sub>w</sub>/R<sub>V</sub> &nbsp;·&nbsp;
+     E = U<sub>V</sub>(1 + R<sub>w</sub>/R<sub>V</sub>)</p>
+
+  <div class="grid">
+    <div>
+      <label for="m_E">SEM źródła E [V]</label>
+      <input id="m_E" type="number" value="10" step="any" min="0">
+      <div class="hint">zostaw 0, jeśli liczysz E z U<sub>V</sub></div>
+    </div>
+    <div>
+      <label for="m_rw">R<sub>w</sub> źródła [Ω]</label>
+      <input id="m_rw" type="number" value="10000" step="any" min="0">
+    </div>
+    <div>
+      <label for="m_rv">R<sub>V</sub> woltomierza [Ω]</label>
+      <input id="m_rv" type="number" value="15000" step="any" min="1">
+      <div class="hint">LM-3: κ·U<sub>z</sub>, κ = 1 kΩ/V; 34450A: 10 MΩ</div>
+    </div>
+    <div>
+      <label for="m_uv">Zmierzone U<sub>V</sub> [V]</label>
+      <input id="m_uv" type="number" value="0" step="any" min="0">
+      <div class="hint">0 → oblicz U<sub>V</sub> z E</div>
+    </div>
+  </div>
+
+  <div class="res">
+    <div class="card"><div class="k">Napięcie mierzone U<sub>V</sub></div>
+      <div class="v" id="m_uvr">—</div><div class="u">V</div></div>
+    <div class="card"><div class="k">Spadek na R<sub>w</sub></div>
+      <div class="v" id="m_drop">—</div><div class="u">V</div></div>
+    <div class="card" id="m_card"><div class="k">Błąd metody Δ<sub>m</sub>E</div>
+      <div class="v" id="m_dme">—</div><div class="u" id="m_dme_u">V</div></div>
+    <div class="card"><div class="k">Błąd względny</div>
+      <div class="v" id="m_rel">—</div><div class="u">%</div></div>
+    <div class="card ok"><div class="k">SEM po korekcji</div>
+      <div class="v" id="m_Ecorr">—</div><div class="u">V</div></div>
+  </div>
+  <div id="m_note"></div>
+
+  <h3>Jak zmienia się wynik z R<sub>V</sub>/R<sub>w</sub></h3>
+  <table>
+    <thead><tr><th>R<sub>V</sub>/R<sub>w</sub></th><th>U<sub>V</sub>/E</th>
+      <th>Δ<sub>m</sub>E/E [%]</th><th>Ocena</th></tr></thead>
+    <tbody id="m_tab"></tbody>
+  </table>
+</section>
+
+<!-- ============================================ 3 -->
+<section id="t3">
+  <h2>Rezystancja wewnętrzna źródła z dwóch woltomierzy</h2>
+  <p class="sub">Wzory (2-15) i (2-16) z instrukcji + <b>propagacja niepewności</b>,
+     której instrukcja nie podaje</p>
+
+  <div class="grid">
+    <div><label for="w_u1">U₁ [V]</label><input id="w_u1" type="number" value="9.99" step="any"></div>
+    <div><label for="w_rv1">R<sub>V1</sub> [Ω]</label><input id="w_rv1" type="number" value="10000000" step="any"></div>
+    <div><label for="w_u1p">niepewność U₁ [%]</label><input id="w_u1p" type="number" value="0.02" step="any"></div>
+    <div><label for="w_rv1p">niepewność R<sub>V1</sub> [%]</label><input id="w_rv1p" type="number" value="1" step="any"></div>
+    <div><label for="w_u2">U₂ [V]</label><input id="w_u2" type="number" value="6" step="any"></div>
+    <div><label for="w_rv2">R<sub>V2</sub> [Ω]</label><input id="w_rv2" type="number" value="15000" step="any"></div>
+    <div><label for="w_u2p">niepewność U₂ [%]</label><input id="w_u2p" type="number" value="0.72" step="any"></div>
+    <div><label for="w_rv2p">niepewność R<sub>V2</sub> [%]</label><input id="w_rv2p" type="number" value="1" step="any"></div>
+  </div>
+
+  <div class="res">
+    <div class="card"><div class="k">SEM E</div><div class="v" id="w_E">—</div><div class="u">V</div></div>
+    <div class="card"><div class="k">R<sub>w</sub> źródła</div><div class="v" id="w_rw">—</div><div class="u">Ω</div></div>
+    <div class="card"><div class="k">u(R<sub>w</sub>)</div><div class="v" id="w_urw">—</div><div class="u">Ω</div></div>
+    <div class="card"><div class="k">u<sub>rel</sub>(R<sub>w</sub>)</div><div class="v" id="w_urel">—</div><div class="u">%</div></div>
+  </div>
+  <div id="w_note"></div>
+
+  <h3>Wkład poszczególnych składników do niepewności R<sub>w</sub></h3>
+  <table>
+    <thead><tr><th>Składnik</th><th>u<sub>rel</sub> wejścia [%]</th>
+      <th>Wzmocnienie |∂R<sub>w</sub>/∂lnx|/R<sub>w</sub></th><th>Wkład [Ω]</th>
+      <th>Udział [%]</th></tr></thead>
+    <tbody id="w_tab"></tbody>
+  </table>
+  <div class="formula" id="w_formula"></div>
+</section>
+
+<!-- ============================================ 4 -->
+<section id="t4">
+  <h2>Niepewność pomiaru SEM metodą kompensacyjną</h2>
+  <p class="sub">Wzór (2-17): trzy składniki — dokładność U<sub>wz</sub>, rozdzielczość regulacji, nieczułość wskaźnika</p>
+
+  <div class="grid">
+    <div><label for="k_uwz">U<sub>wz</sub> ≈ E [V]</label><input id="k_uwz" type="number" value="10" step="any"></div>
+    <div><label for="k_uz">Zakres woltomierza U<sub>z</sub> [V]</label><input id="k_uz" type="number" value="30" step="any"></div>
+    <div><label for="k_a">δ<sub>g</sub> = a [%]</label><input id="k_a" type="number" value="0.01" step="0.001"></div>
+    <div><label for="k_b">δ<sub>g</sub> = b [%] ·U<sub>z</sub>/U</label><input id="k_b" type="number" value="0.01" step="0.001"></div>
+    <div><label for="k_du">ΔU rozdzielczość [mV]</label><input id="k_du" type="number" value="0.1" step="any">
+      <div class="hint">E3646A 100 mV/działkę → 10 mV; w zad. 22: 0,1 mV</div></div>
+    <div><label for="k_dumin">ΔU<sub>min</sub> wskaźnika [mV]</label><input id="k_dumin" type="number" value="0.01" step="any"></div>
+  </div>
+
+  <div class="res">
+    <div class="card"><div class="k">δ<sub>g</sub>U<sub>wz</sub></div><div class="v" id="k_dg">—</div><div class="u">%</div></div>
+    <div class="card"><div class="k">Δ<sub>g</sub>U<sub>wz</sub></div><div class="v" id="k_dabs">—</div><div class="u">mV</div></div>
+    <div class="card"><div class="k">u(E)</div><div class="v" id="k_u">—</div><div class="u">mV</div></div>
+    <div class="card"><div class="k">u<sub>rel</sub>(E)</div><div class="v" id="k_rel">—</div><div class="u">%</div></div>
+  </div>
+  <div id="k_note"></div>
+
+  <h3>Który składnik dominuje?</h3>
+  <table>
+    <thead><tr><th>Składnik</th><th>Wartość [mV]</th><th>Wkład do u(E) [mV]</th><th>Udział [%]</th></tr></thead>
+    <tbody id="k_tab"></tbody>
+  </table>
+</section>
+
+<!-- ============================================ 5 -->
+<section id="t5">
+  <h2>Dobór zakresu woltomierza LM-3 (klasa 0,5)</h2>
+  <p class="sub">Zakresy: 1,5 · 3 · 7,5 · 15 · 30 · 75 · 150 V &nbsp;·&nbsp;
+     R<sub>V</sub> = κ·U<sub>z</sub>, κ = 1 kΩ/V</p>
+
+  <div class="grid">
+    <div><label for="z_u">Mierzone napięcie U [V]</label>
+      <input id="z_u" type="number" value="6" step="any" min="0"></div>
+    <div><label for="z_k">Klasa k<sub>l</sub> [%]</label>
+      <input id="z_k" type="number" value="0.5" step="0.1"></div>
+    <div><label for="z_rw">R<sub>w</sub> źródła [Ω] (opcjonalnie)</label>
+      <input id="z_rw" type="number" value="1000" step="any" min="0"></div>
+  </div>
+  <div id="z_note"></div>
+
+  <h3>Wszystkie zakresy — porównanie</h3>
+  <table>
+    <thead><tr><th>Zakres</th><th>U/U<sub>z</sub></th><th>δU [%]</th><th>u(U)</th>
+      <th>u<sub>rel</sub> [%]</th><th>R<sub>V</sub></th><th>Błąd metody</th><th>Ocena</th></tr></thead>
+    <tbody id="z_tab"></tbody>
+  </table>
+  <div class="ok-note" id="z_best"></div>
+</section>
+</div>
+
+<footer>
+  Wzory i konwencja niepewności wg instrukcji T2 v. 2.4 (ISE WEiTI PW) ·
+  u = Δ<sub>g</sub>/√3 dla przyrządów, u = Δ<sub>g</sub>/3 dla elementów wzorcowych · k = 1
+</footer>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : 0; };
+
+/* ---------- formatowanie ---------- */
+function fmt(x, sig = 4) {
+  if (!isFinite(x) || x === 0) return "0";
+  const a = Math.abs(x);
+  if (a >= 1e6 || a < 1e-3) {
+    const e = Math.floor(Math.log10(a));
+    const m = x / Math.pow(10, e);
+    return m.toFixed(Math.max(0, sig - 1)).replace(".", ",") + "·10" + sup(e);
+  }
+  const dec = Math.max(0, sig - 1 - Math.floor(Math.log10(a)));
+  return x.toFixed(Math.min(dec, 8)).replace(".", ",");
+}
+const SUP = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻"};
+const sup = n => String(n).split("").map(c => SUP[c] || c).join("");
+function ohms(x) {
+  if (!isFinite(x)) return "—";
+  if (Math.abs(x) >= 1e6) return fmt(x / 1e6, 3) + " MΩ";
+  if (Math.abs(x) >= 1e3) return fmt(x / 1e3, 3) + " kΩ";
+  return fmt(x, 3) + " Ω";
+}
+function volts(x) { return fmt(x, 4) + " V"; }
+function pct(x) { return fmt(x, 3) + " %"; }
+
+/* ---------- zakładki ---------- */
+document.querySelectorAll("nav button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll("section").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    $(b.dataset.tab).classList.add("active");
+  });
+});
+
+/* ============================================================ 1 */
+function calc1() {
+  const typ = $("p_typ").value, uz = num("p_uz"), u = num("p_u");
+  $("g_kl").style.display = typ === "kl" ? "" : "none";
+  $("g_a").style.display = typ === "cyf" ? "" : "none";
+  $("g_b").style.display = typ === "cyf" ? "" : "none";
+
+  let dg = 0, div = 3 ** 0.5, formula = "", label = "Δ<sub>g</sub>";
+  if (typ === "kl") {
+    dg = num("p_k") * uz / 100;
+    formula = `Δ<sub>kl</sub>U = k<sub>l</sub>·U<sub>z</sub>/100 = ${fmt(num("p_k"),3)}·${fmt(uz,4)}/100 = <b>${fmt(dg,4)} V</b>`;
+  } else if (typ === "cyf") {
+    const a = num("p_a"), b = num("p_b");
+    dg = (a + (u > 0 ? b * uz / u : 0)) / 100 * (u > 0 ? u : uz);
+    formula = `δ<sub>g</sub> = ${fmt(a,3)} % + ${fmt(b,3)} %·${fmt(uz,4)}/${fmt(u,4)} = <b>${u>0?fmt((a+b*uz/u),3):"—"} %</b> → Δ<sub>g</sub> = ${fmt(dg,4)} V`;
+  } else {
+    dg = num("p_k") / 100 * u; div = 3;
+    formula = `Δ<sub>g</sub> = δ·U/100 = ${fmt(num("p_k"),3)} %·${fmt(u,4)} V = <b>${fmt(dg,4)} V</b>`;
+  }
+
+  const ux = dg / div;
+  const urel = (ux / (u > 0 ? u : 1)) * 100;
+  const dgrel = (dg / (u > 0 ? u : 1)) * 100;
+
+  const dgWlasciwy = typ === "kl" ? num("p_k")
+                   : typ === "wzo" ? num("p_k")
+                   : (num("p_a") + (u > 0 ? num("p_b") * uz / u : 0));
+  $("r_dg").textContent = fmt(dgWlasciwy, 3);
+  $("r_dabs").textContent = fmt(dg, 4).replace(" ", "");
+  $("r_u").textContent = fmt(ux, 3).replace(" ", "");
+  $("r_urel").textContent = pct(urel).replace(" %", "");
+  $("r_zapis").textContent = fmt(u, 4) + " ± " + fmt(ux, 2);
+
+  const uzPct = uz > 0 ? (u / uz) * 100 : 0;
+  let note = "";
+  if (uzPct > 0 && uzPct < 50) {
+    const urelNaKonc = dgrel / Math.sqrt(3);
+    const ile = urelNaKonc > 0 ? 100 / uzPct : 0;
+    const hint = typ === "kl" ? " Dobierz mniejszy zakres — patrz zakładka 5." : "";
+    note = `<div class="note"><b>Małe wykorzystanie zakresu (${fmt(uzPct,3)} %).</b>
+      Niepewność względna jest ${fmt(ile,3)}× większa niż przy wskazaniu na końcu zakresu
+      (${pct(urel)} zamiast ${pct(urelNaKonc)}).${hint}</div>`;
+  } else if (uzPct >= 50) {
+    note = `<div class="ok-note"><b>Dobry zakres</b> — wskazanie to ${fmt(uzPct,3)} % zakresu.
+      ${typ==="kl"?"Optymalnie: jak najbliżej końca skali.":""}</div>`;
+  }
+  $("p_note1").innerHTML = note;
+  $("p_formula").innerHTML = formula +
+    ` &nbsp;·&nbsp; u(x) = Δ / ${typ==="wzo"?"3":"√3"} = <b>${fmt(ux,3)} V</b>`;
+
+  /* tabela */
+  const rows = [];
+  [0.1, 0.2, 0.3, 0.5, 0.75, 1].forEach(f => {
+    const uu = uz * f;
+    let d2 = 0;
+    if (typ === "kl") d2 = num("p_k") * uz / 100;
+    else if (typ === "cyf") d2 = (num("p_a") + num("p_b") * uz / uu) / 100 * uu;
+    else d2 = num("p_k") / 100 * uu;
+    const u2 = d2 / div;
+    rows.push(`<tr><td>${volts(uu)}</td><td>${fmt(f*100,3)} %</td>
+      <td class="num">${fmt((d2/uu)*100,3)}</td><td class="num">${fmt(u2,3)} V</td>
+      <td class="num">${fmt((u2/uu)*100,3)}</td></tr>`);
+  });
+  $("p_tab").innerHTML = rows.join("");
+}
+["p_typ","p_k","p_a","p_b","p_uz","p_u"].forEach(id =>
+  $(id).addEventListener("input", calc1));
+
+/* ============================================================ 2 */
+function calc2() {
+  const E = num("m_E"), rw = num("m_rw"), rv = num("m_rv");
+  let uv = num("m_uv");
+  let Eeff = E;
+  if (uv > 0 && E <= 0) {                    /* E z U_V */
+    Eeff = uv * (1 + rw / rv);
+  } else if (E > 0) {
+    uv = E * rv / (rw + rv);
+  }
+  const drop = Eeff * rw / (rw + rv);
+  const dme = uv - Eeff;
+  const rel = Eeff > 0 ? (dme / Eeff) * 100 : 0;
+  const Ecorr = uv * (1 + rw / rv);
+  const ratio = rw > 0 ? rv / rw : Infinity;
+
+  $("m_uvr").textContent = fmt(uv, 4).replace(" ", "");
+  $("m_drop").textContent = fmt(drop, 4).replace(" ", "");
+  $("m_dme").textContent = (dme < 0 ? "−" : "") + fmt(Math.abs(dme), 3).replace(" ", "");
+  $("m_rel").textContent = (rel < 0 ? "−" : "") + fmt(Math.abs(rel), 3).replace(" ", "");
+  $("m_Ecorr").textContent = fmt(Ecorr, 4).replace(" ", "");
+
+  const card = $("m_card");
+  card.className = "card " + (Math.abs(rel) < 1 ? "ok" : Math.abs(rel) < 10 ? "" : "bad");
+
+  let note = "";
+  if (ratio >= 100) {
+    note = `<div class="ok-note"><b>R<sub>V</sub>/R<sub>w</sub> = ${fmt(ratio,4)} ≥ 100</b> —
+      błąd metody ${pct(Math.abs(rel))} jest pomijalny (&lt; 1 %). Można stosować metodę bezpośrednią.</div>`;
+  } else if (ratio >= 10) {
+    note = `<div class="note"><b>R<sub>V</sub>/R<sub>w</sub> = ${fmt(ratio,4)}</b> —
+      błąd ${pct(Math.abs(rel))}. Skorygować wzorem (2-5) albo użyć lepszego woltomierza.</div>`;
+  } else {
+    note = `<div class="note"><b>R<sub>V</sub>/R<sub>w</sub> = ${fmt(ratio,4)}</b> —
+      błąd ${pct(Math.abs(rel))} jest duży. Konieczna korekcja lub <b>metoda kompensacyjna</b>
+      (woltomierz zbyt mocno obciąża źródło).</div>`;
+  }
+  $("m_note").innerHTML = note;
+
+  const rows = [0.01, 0.1, 0.5, 1, 2, 10, 100, 1000].map(r => {
+    const f = r / (1 + r);
+    const err = (f - 1) * 100;
+    const oc = r >= 100 ? '<span class="badge">pomijalny</span>'
+             : r >= 10 ? '<span class="badge no">korygować</span>'
+             : '<span class="badge no" style="background:#a3231f">za duży</span>';
+    const hl = Math.abs(Math.log10(r) - Math.log10(ratio)) < 0.15
+      ? ' style="background:#e8f0fb;font-weight:700"' : "";
+    return `<tr${hl}><td>${fmt(r,3)}</td><td class="num">${fmt(f*100,3)} %</td>
+      <td class="num">${fmt(err,3)}</td><td>${oc}</td></tr>`;
+  });
+  $("m_tab").innerHTML = rows.join("");
+}
+["m_E","m_rw","m_rv","m_uv"].forEach(id => $(id).addEventListener("input", calc2));
+
+/* ============================================================ 3 */
+function calc3() {
+  const u1 = num("w_u1"), rv1 = num("w_rv1"), u2 = num("w_u2"), rv2 = num("w_rv2");
+  const p1 = num("w_u1p") / 100, p2 = num("w_u2p") / 100;
+  const pr1 = num("w_rv1p") / 100, pr2 = num("w_rv2p") / 100;
+
+  const den = rv1 * u2 - rv2 * u1;
+  if (Math.abs(den) < 1e-12) {
+    $("w_E").textContent = $("w_rw").textContent = "—";
+    $("w_note").innerHTML = `<div class="note"><b>Mianownik ≈ 0</b> — wskazania są zbyt bliskie
+      sobie (albo rezystancje identyczne). Metoda nie da wiarygodnego wyniku.</div>`;
+    $("w_tab").innerHTML = ""; $("w_formula").textContent = "";
+    return;
+  }
+  const E = u1 * u2 * (rv1 - rv2) / den;
+  const rw = rv1 * rv2 * (u1 - u2) / den;
+
+  /* czułości dRw/dln(x) — analitycznie (numeryczne mają katastrofę odejmowania) */
+  const d2 = den * den;
+  const s1 =  rv1 * rv2 * u1 * u2 * (rv1 - rv2) / d2;
+  const s2 = -s1;
+  const s3 = -rv1 * rv2 * rv2 * u1 * (u1 - u2) / d2;
+  const s4 =  rv1 * rv1 * rv2 * u2 * (u1 - u2) / d2;
+
+  const c1 = s1 * p1, c2 = s2 * p2, c3 = s3 * pr1, c4 = s4 * pr2;
+  const urw = Math.sqrt(c1 * c1 + c2 * c2 + c3 * c3 + c4 * c4);
+  const tot = urw || 1;
+
+  $("w_E").textContent = fmt(E, 4).replace(" ", "");
+  $("w_rw").textContent = ohms(rw);
+  $("w_urw").textContent = ohms(urw);
+  $("w_urel").textContent = fmt(urw / Math.abs(rw || 1) * 100, 3);
+
+  const items = [
+    ["U₁", p1 * 100, s1 / rw, c1],
+    ["U₂", p2 * 100, s2 / rw, c2],
+    ["R<sub>V1</sub>", pr1 * 100, s3 / rw, c3],
+    ["R<sub>V2</sub>", pr2 * 100, s4 / rw, c4],
+  ];
+  const sq = items.reduce((a, x) => a + x[3] * x[3], 0) || 1;
+  const maxIdx = items.reduce((mi, x, i) => Math.abs(x[3]) > Math.abs(items[mi][3]) ? i : mi, 0);
+  const shares = items.map(x => x[3] * x[3] / sq * 100);
+  const sumShares = shares.reduce((a, b) => a + b, 0);
+  const shown = shares.map(x => Math.round(x * 10) / 10);
+  const residual = Math.round((100 - shown.reduce((a, b) => a + b, 0)) * 10) / 10;
+  const adj = shown.slice();
+  adj[adj.indexOf(Math.max(...shown))] = Math.round((adj[adj.indexOf(Math.max(...shown))] + residual) * 10) / 10;
+  $("w_tab").innerHTML = items.map((x, i) => `<tr${i === maxIdx ? ' style="background:#fdf0ef;font-weight:700"' : ""}>
+      <td>${x[0]}</td><td class="num">${fmt(x[1],3)}</td>
+      <td class="num">${fmt(Math.abs(x[2]),3)}</td>
+      <td class="num">${fmt(Math.abs(x[3]),3)}</td>
+      <td class="num">${fmt(adj[i],3)}</td></tr>`).join("");
+
+  $("w_formula").innerHTML =
+    `E = U₁U₂(R<sub>V1</sub>−R<sub>V2</sub>)/(R<sub>V1</sub>U₂−R<sub>V2</sub>U₁) = <b>${fmt(E,5)} V</b>
+     &nbsp;·&nbsp; R<sub>w</sub> = R<sub>V1</sub>R<sub>V2</sub>(U₁−U₂)/(…) = <b>${ohms(rw)}</b>`;
+
+  const share = items[maxIdx][3] * items[maxIdx][3] / sq * 100;
+  $("w_note").innerHTML = `<div class="${share > 80 ? "note" : "ok-note"}">
+    <b>Dominuje ${items[maxIdx][0]}</b> (${fmt(share,3)} % budżetu niepewności).
+    ${maxIdx < 2
+      ? "To typowe — o niepewności R<sub>w</sub> decyduje dokładność pomiaru <b>napięć</b>, a nie rezystancji woltomierzy."
+      : "Niepewność rezystancji woltomierza ma duże znaczenie — sprawdź, czy znasz R<sub>V</sub> wystarczająco dokładnie."}
+    Wymóg wiarygodności: |U₁−U₂| ≫ niepewności wskazań
+    (tu: ${fmt(Math.abs(u1-u2),3)} V vs ${fmt(Math.sqrt((u1*p1)**2+(u2*p2)**2),3)} V).</div>`;
+}
+["w_u1","w_rv1","w_u1p","w_rv1p","w_u2","w_rv2","w_u2p","w_rv2p"]
+  .forEach(id => $(id).addEventListener("input", calc3));
+
+/* ============================================================ 4 */
+function calc4() {
+  const uwz = num("k_uwz"), uz = num("k_uz");
+  const a = num("k_a"), b = num("k_b");
+  const dU = num("k_du"), dUmin = num("k_dumin");
+  const dgRel = a + (uwz > 0 ? b * uz / uwz : 0);
+  const dAbs = dgRel / 100 * uwz * 1000;         /* mV */
+  const uE = Math.sqrt((dAbs ** 2 + dU ** 2 + dUmin ** 2) / 3);
+  const rel = uwz > 0 ? uE / (uwz * 1000) * 100 : 0;
+
+  $("k_dg").textContent = fmt(dgRel, 3);
+  $("k_dabs").textContent = fmt(dAbs, 3);
+  $("k_u").textContent = fmt(uE, 3);
+  $("k_rel").textContent = fmt(rel, 4);
+
+  const parts = [["Δ<sub>g</sub>U<sub>wz</sub>", dAbs], ["ΔU (rozdzielczość)", dU],
+                 ["ΔU<sub>min</sub> (wskaźnik)", dUmin]];
+  const sq = parts.reduce((a, p) => a + p[1] * p[1], 0) || 1;
+  const tot = Math.sqrt(sq);
+  $("k_tab").innerHTML = parts.map(p => `<tr>
+      <td>${p[0]}</td><td class="num">${fmt(p[1],3)}</td>
+      <td class="num">${fmt(p[1] / 3 ** 0.5,3)}</td>
+      <td class="num">${fmt(p[1] * p[1] / sq * 100,3)}</td></tr>`).join("");
+
+  const dom = parts.reduce((m, p) => p[1] > m[1] ? p : m, parts[0]);
+  $("k_note").innerHTML = `<div class="note">
+    Dominuje <b>${dom[0]}</b> (${fmt(dom[1] * dom[1] / (parts.reduce((a,p)=>a+p[1]*p[1],0)||1) * 100,3)} % sumy kwadratów).
+    Aby zmniejszyć niepewność: dokładniejszy woltomierz lub <b>mniejszy zakres</b>
+    (δ<sub>g</sub> maleje, bo składnik b·U<sub>z</sub>/U<sub>wz</sub> się zmniejsza).</div>`;
+}
+["k_uwz","k_uz","k_a","k_b","k_du","k_dumin"].forEach(id =>
+  $(id).addEventListener("input", calc4));
+
+/* ============================================================ 5 */
+const ZAKRESY = [1.5, 3, 7.5, 15, 30, 75, 150];
+function calc5() {
+  const u = num("z_u"), kl = num("z_k"), rw = num("z_rw");
+  const rows = [];
+  let best = null;
+
+  ZAKRESY.forEach(uz => {
+    const ok = u <= uz;
+    const frac = uz > 0 ? u / uz * 100 : 0;
+    const dAbs = kl * uz / 100;
+    const urel = u > 0 ? (dAbs / 3 ** 0.5) / u * 100 : 0;
+    const rv = 1000 * uz;
+    const err = rw > 0 ? rw / (rw + rv) * 100 : 0;
+
+    if (ok && (best === null || urel < best.urel)) best = { uz, urel, rv, err, dAbs };
+
+    const oc = !ok ? '<span class="badge no" style="background:#a3231f">przekroczenie</span>'
+            : (best === null || urel === best.urel && uz === best.uz)
+              ? '<span class="badge">najlepszy</span>'
+              : frac < 50 ? '<span class="badge no">małe wskazanie</span>'
+              : '<span class="badge no">gorszy</span>';
+
+    rows.push(`<tr style="${!ok ? "opacity:.42;background:#f4f6f9" : ""}">
+      <td><b>${String(uz).replace(".", ",")} V</b></td><td>${ok ? fmt(frac, 3) + " %" : "—"}</td>
+      <td class="num">${fmt(kl * uz / u * 100 || 0, 3)}</td>
+      <td class="num">${fmt(dAbs / 3 ** 0.5 * 1000, 0)} mV</td>
+      <td class="num">${ok ? fmt(urel, 3) : "—"}</td>
+      <td>${ohms(rv)}</td>
+      <td class="num">${fmt(err, 3)} %</td>
+      <td>${oc}</td></tr>`);
+  });
+  $("z_tab").innerHTML = rows.join("");
+
+  /* reguła: mały zakres = mała niepewność, ale małe R_V = duży błąd metody */
+  const rvBest = best ? best.rv : 0;
+  const okMetody = rw > 0 ? rvBest / rw >= 100 : true;
+  $("z_note").innerHTML = best
+    ? `<div class="note"><b>Konflikt, o którym instrukcja nie mówi wprost:</b>
+       mniejszy zakres daje mniejszy błąd graniczny (k<sub>l</sub>·U<sub>z</sub>), ale zarazem
+       mniejsze R<sub>V</sub> = κ·U<sub>z</sub>, czyli <i>większy</i> błąd metody.
+       Dla U = ${fmt(u,4)} V najlepszy kompromis to <b>${String(best.uz).replace(".", ",")} V</b>
+       (R<sub>V</sub>/R<sub>w</sub> = ${rw>0?fmt(rvBest/rw,3):"—"}
+       ${rw>0?(okMetody?'&nbsp;<span class="badge">OK ≥ 100</span>':'&nbsp;<span class="badge no">za mało</span>'):""})
+       ${rw>0 && !okMetody ? "<br>Przy tej rezystancji źródła woltomierz elektromechaniczny w ogóle nie spełni warunku R<sub>V</sub> ≥ 100·R<sub>w</sub> — trzeba użyć multimetru cyfrowego (10 MΩ)." : ""}
+       </div>`
+    : "";
+
+  if (best) {
+    const totErr = Math.hypot(best.urel, best.err / 3 ** 0.5);
+    $("z_best").innerHTML = `<b>Wybierz zakres ${String(best.uz).replace(".", ",")} V.</b>
+      u<sub>rel</sub> = ${pct(best.urel)}, R<sub>V</sub> = ${ohms(best.rv)},
+      błąd metody (przy R<sub>w</sub> = ${ohms(rw)}) = ${pct(best.err)}.
+      Łącznie (niepewność + błąd metody/√3): <b>≈ ${pct(totErr)}</b>.`;
+  } else {
+    $("z_best").innerHTML = `<b>Mierzone napięcie (${fmt(u,4)} V) przekracza największy zakres 150 V.</b>
+      Użyj innego woltomierza.`;
+  }
+}
+["z_u","z_k","z_rw"].forEach(id => $(id).addEventListener("input", calc5));
+
+/* start */
+calc1(); calc2(); calc3(); calc4(); calc5();
+</script>
+</body>
+</html>
