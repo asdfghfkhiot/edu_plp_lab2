@@ -266,6 +266,9 @@ def data_table(rows, widths, header=True, fs=8.5, align=None, zebra=True):
                     st = S['cell_hc'] if (align and align[c_i] == 'c') else S['cell_h']
                 else:
                     st = S['cell_c'] if (align and align[c_i] == 'c') else S['cell']
+                if abs(fs - 8.5) > 1e-6:          # nadpisanie rozmiaru czcionki
+                    st = ParagraphStyle(st.name + f'_{fs}', parent=st, fontSize=fs,
+                                        leading=fs * 1.36)
                 out.append(Paragraph(cell, st))
             else:
                 out.append(cell)
